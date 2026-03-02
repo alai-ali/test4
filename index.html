@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BSMLH System</title>
+    <style>
+        :root { --bg: #000000; --text: #ffffff; --secondary: #8e8e93; --gold: #f6851b; --card-bg: #111111; }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background-color: var(--bg); color: var(--text); font-family: -apple-system, system-ui, sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        
+        .main-container { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; text-align: center; width: 100%; }
+        .logo { font-size: 32px; font-weight: 500; letter-spacing: 8px; margin-bottom: 40px; }
+        
+        .btn-group { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 320px; }
+        .primary-btn { background: #fff; color: #000; border: none; padding: 16px; border-radius: 6px; font-size: 15px; font-weight: 600; cursor: pointer; width: 100%; }
+        .secondary-btn { background: transparent; color: #fff; border: 1px solid #333; padding: 16px; border-radius: 6px; font-size: 15px; cursor: pointer; width: 100%; }
+
+        .input-field { width: 100%; max-width: 320px; background: #111; border: 1px solid #333; padding: 14px; border-radius: 6px; color: #fff; margin-bottom: 10px; font-size: 16px; outline: none; }
+        .input-field:focus { border-color: var(--gold); }
+
+        #cam-box { display: none; width: 100%; }
+        .v-wrap { width: 200px; height: 260px; margin: 0 auto 20px; border-radius: 100px / 130px; overflow: hidden; border: 2px solid var(--gold); background: #050505; }
+        #video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+
+        .dashboard { display: none; flex-direction: column; gap: 12px; width: 100%; max-width: 400px; text-align: left; padding: 20px; overflow-y: auto; }
+        .user-hdr { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; }
+        .user-ava { width: 65px; height: 65px; border-radius: 50%; border: 2px solid var(--gold); overflow: hidden; background: #1a1a1a; }
+        
+        .card { background: var(--card-bg); border: 1px solid #222; padding: 18px; border-radius: 14px; position: relative; cursor: pointer; }
+        .profile-details { display: none; margin-top: 12px; border-top: 1px solid #222; padding-top: 12px; font-size: 14px; color: var(--secondary); line-height: 1.8; }
+        
+        .footer-text { padding: 15px; text-align: center; color: var(--secondary); font-size: 9px; text-transform: uppercase; letter-spacing: 1px; border-top: 1px solid #111; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body>
+
+    <div class="main-container" id="app-content">
+        <div id="home-view">
+            <div class="logo">BSMLH</div>
+            <div class="btn-group">
+                <button class="primary-btn" onclick="secureLogin()">Войти (NFC)</button>
+                <button class="secondary-btn" onclick="startOnboarding()">Зарегистрироваться</button>
+            </div>
+            <div id="status-msg" style="margin-top: 25px; color: var(--gold); font-size: 14px;"></div>
+        </div>
+
+        <div id="dynamic-content"></div>
+
+        <div id="cam-box">
+            <h2 style="margin-bottom: 20px;">Биометрия</h2>
+            <div class="v-wrap"><video id="video" autoplay playsinline></video></div>
+            <button class="primary-btn" onclick="capturePhoto()">Сделать фото</button>
+        </div>
+    </div>
+
+    <div class="dashboard" id="main-dashboard">
+        <div class="user-hdr">
+            <div class="user-ava"><img id="res-photo" style="width:100%; height:100%; object-fit:cover;"></div>
+            <div>
+                <div style="font-size: 13px; color: var(--secondary);">Verified Identity</div>
+                <div id="user-huid-display" style="font-weight: bold; font-size: 18px; color: var(--gold);">HUID-XXXX</div>
+            </div>
+        </div>
+
+        <div class="card" onclick="toggleProfile()">
+            <div style="color: var(--secondary); font-size: 10px; margin-bottom: 5px; letter-spacing: 1px;">ПРОФИЛЬ (Нажать)</div>
+            <div style="font-size: 18px; font-weight: 500;" id="res-name-full">Загрузка...</div>
+            <div class="profile-details" id="profile-info">
+                <div id="res-email">Email: </div>
+                <div id="res-phone">Тел: </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div style="color: var(--secondary); font-size: 10px; margin-bottom: 5px;">СТАТУС</div>
+            <div style="font-size: 18px;">Soulbound Verified 🛡️</div>
+        </div>
+
+        <div class="card">
+            <div style="color: var(--secondary); font-size: 10px; margin-bottom: 5px;">QRT BALANCE</div>
+            <div style="font-size: 22px; font-weight: bold;">1.00 QRT</div>
+        </div>
+
+        <button class="secondary-btn" style="margin-top: 15px; border-color: #222;" onclick="location.reload()">Выйти</button>
+    </div>
+
+    <footer class="footer-text">Biometric Security Multi-function Ledger for Humanity</footer>
+
+    <canvas id="canvas" style="display:none;"></canvas>
+
+    <script>
+        let photoBase64 = "";
+        let userForm = { name: "", surname: "", email: "", phone: "" };
+        let currentStep = 0;
+        let videoStream = null;
+
+        const slides = [
+            { title: "HUID", desc: "Ваша цифровая личность нового поколения, защищенная блокчейном." },
+            { title: "BSMLH CHIP", desc: "Кольцо — ваш физический ключ. Без него доступ к данным невозможен." }
+        ];
+
+        function startOnboarding() {
+            document.getElementById('home-view').style.display = 'none';
+            renderSlide();
+        }
+
+        function renderSlide() {
+            const container = document.getElementById('dynamic-content');
+            if (currentStep < slides.length) {
+                container.innerHTML = `
+                    <h2 style="margin-bottom: 15px; animation: fadeIn 0.5s;">${slides[currentStep].title}</h2>
+                    <p style="color: var(--secondary); margin-bottom: 40px; line-height: 1.6;">${slides[currentStep].desc}</p>
+                    <button class="primary-btn" style="max-width:200px;" onclick="currentStep++; renderSlide()">Далее</button>
+                `;
+            } else { renderForm(); }
+        }
+
+        function renderForm() {
+            const container = document.getElementById('dynamic-content');
+            container.innerHTML = `
+                <h2 style="margin-bottom: 25px;">Регистрация</h2>
+                <input type="text" id="f-name" class="input-field" placeholder="Имя">
+                <input type="text" id="f-surname" class="input-field" placeholder="Фамилия">
+                <input type="email" id="f-email" class="input-field" placeholder="Email">
+                <input type="tel" id="f-phone" class="input-field" placeholder="Телефон">
+                <button class="primary-btn" style="margin-top:10px;" onclick="saveFormAndCam()">К биометрии</button>
+            `;
+        }
+
+        function saveFormAndCam() {
+            userForm.name = document.getElementById('f-name').value;
+            userForm.surname = document.getElementById('f-surname').value;
+            userForm.email = document.getElementById('f-email').value;
+            userForm.phone = document.getElementById('f-phone').value;
+
+            if(!userForm.name || !userForm.surname) return alert("Заполните Имя и Фамилию");
+            
+            document.getElementById('dynamic-content').style.display = 'none';
+            document.getElementById('cam-box').style.display = 'block';
+            
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
+            .then(s => {
+                videoStream = s;
+                document.getElementById('video').srcObject = s;
+            }).catch(e => alert("Доступ к камере отклонен"));
+        }
+
+        function capturePhoto() {
+            const v = document.getElementById('video');
+            const c = document.getElementById('canvas');
+            c.width = 160; c.height = 160;
+            c.getContext('2d').drawImage(v, 0, 0, 160, 160);
+            photoBase64 = c.toDataURL('image/jpeg', 0.3);
+            
+            if (videoStream) videoStream.getTracks().forEach(t => t.stop());
+            document.getElementById('cam-box').innerHTML = "<h2 style='color:var(--gold); animation: fadeIn 0.5s;'>Приложите кольцо к датчику...</h2><p style='font-size:12px; margin-top:10px; color:var(--secondary);'>Для iPhone: приложите к верхней части корпуса</p>";
+            
+            setTimeout(() => { initNFCBinding(); }, 800);
+        }
+
+        async function initNFCBinding() {
+            const newHuid = "HUID-2026-" + Math.random().toString(16).slice(2, 10).toUpperCase();
+            const iosKey = "BSMLH-KEY-" + Math.random().toString(36).slice(2, 7).toUpperCase();
+
+            if ('NDEFReader' in window) {
+                try {
+                    const ndef = new NDEFReader();
+                    await ndef.scan();
+                    // Записываем ключ для iPhone
+                    await ndef.write({ records: [{ recordType: "text", data: iosKey }] });
+
+                    ndef.onreading = event => {
+                        const uid = event.serialNumber || iosKey;
+                        finalizeReg(uid, newHuid);
+                    };
+                } catch (e) { finalizeReg("EMU-"+iosKey, newHuid); }
+            } else { finalizeReg("DEBUG-KEY", newHuid); }
+        }
+
+        function finalizeReg(uid, huid) {
+            localStorage.setItem('bs_uid', uid);
+            localStorage.setItem('bs_huid', huid);
+            localStorage.setItem('bs_photo', photoBase64);
+            localStorage.setItem('bs_user', JSON.stringify(userForm));
+            showDashboard(huid, photoBase64, userForm);
+        }
+
+        function showDashboard(huid, photo, user) {
+            document.getElementById('app-content').style.display = 'none';
+            document.getElementById('main-dashboard').style.display = 'flex';
+            document.getElementById('user-huid-display').innerText = huid;
+            document.getElementById('res-photo').src = photo;
+            document.getElementById('res-name-full').innerText = user.name + " " + user.surname;
+            document.getElementById('res-email').innerText = "Email: " + user.email;
+            document.getElementById('res-phone').innerText = "Тел: " + user.phone;
+        }
+
+        async function secureLogin() {
+            const savedUID = localStorage.getItem('bs_uid');
+            if (!savedUID) return alert("Зарегистрируйтесь!");
+
+            if ('NDEFReader' in window) {
+                try {
+                    const ndef = new NDEFReader();
+                    await ndef.scan();
+                    document.getElementById('status-msg').innerText = "Ожидание кольца...";
+                    ndef.onreading = event => {
+                        const decoder = new TextDecoder();
+                        let readKey = "";
+                        for (const record of event.message.records) {
+                            if (record.recordType === "text") readKey = decoder.decode(record.data);
+                        }
+                        
+                        if (event.serialNumber === savedUID || readKey === savedUID) {
+                            loadAccount();
+                        } else { alert("Кольцо не распознано!"); }
+                    };
+                } catch (e) { fallbackAuth(); }
+            } else { fallbackAuth(); }
+        }
+
+        function fallbackAuth() {
+            if (prompt("Введите защитный код (1234):") === "1234") loadAccount();
+        }
+
+        function loadAccount() {
+            const h = localStorage.getItem('bs_huid');
+            const p = localStorage.getItem('bs_photo');
+            const u = JSON.parse(localStorage.getItem('bs_user'));
+            showDashboard(h, p, u);
+        }
+
+        function toggleProfile() {
+            const info = document.getElementById('profile-info');
+            info.style.display = info.style.display === 'block' ? 'none' : 'block';
+        }
+    </script>
+</body>
+</html>
