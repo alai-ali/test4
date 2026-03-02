@@ -5,161 +5,183 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>BSMLH System</title>
     <style>
-        :root { --bg: #000000; --text: #ffffff; --secondary: #8e8e93; --gold: #f6851b; --card-bg: #111111; }
+        :root { --bg: #000; --text: #fff; --gold: #f6851b; --secondary: #8e8e93; }
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { background-color: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-        .main-container { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; text-align: center; }
-        .logo { font-size: 32px; font-weight: 500; letter-spacing: 8px; margin-bottom: 40px; }
-        .btn-group { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 320px; }
-        .primary-btn { background: #fff; color: #000; border: none; padding: 16px; border-radius: 6px; font-size: 15px; font-weight: 600; cursor: pointer; width: 100%; }
-        .secondary-btn { background: transparent; color: #fff; border: 1px solid #333; padding: 16px; border-radius: 6px; font-size: 15px; cursor: pointer; width: 100%; }
-        .input-field { width: 100%; max-width: 320px; background: #111; border: 1px solid #333; padding: 14px; border-radius: 6px; color: #fff; margin-bottom: 10px; font-size: 16px; outline: none; }
+        body { background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        
+        .container { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; text-align: center; }
+        .logo { font-size: 32px; letter-spacing: 8px; margin-bottom: 50px; font-weight: 500; }
+        
+        .btn-group { width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 15px; }
+        .p-btn { background: #fff; color: #000; border: none; padding: 18px; border-radius: 8px; font-weight: 600; font-size: 16px; cursor: pointer; }
+        .s-btn { background: transparent; color: #fff; border: 1px solid #333; padding: 18px; border-radius: 8px; font-size: 16px; cursor: pointer; }
+        
+        .input-field { width: 100%; max-width: 320px; background: #111; border: 1px solid #333; padding: 15px; border-radius: 8px; color: #fff; margin-bottom: 12px; font-size: 16px; outline: none; }
+        
         #cam-box { display: none; width: 100%; }
         .v-wrap { width: 200px; height: 260px; margin: 0 auto 20px; border-radius: 100px / 130px; overflow: hidden; border: 2px solid var(--gold); background: #050505; }
         #video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
-        .dashboard { display: none; flex-direction: column; gap: 12px; width: 100%; max-width: 400px; text-align: left; padding: 20px; overflow-y: auto; }
-        .user-hdr { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; }
-        .user-ava { width: 65px; height: 65px; border-radius: 50%; border: 2px solid var(--gold); overflow: hidden; background: #1a1a1a; }
-        .card { background: var(--card-bg); border: 1px solid #222; padding: 18px; border-radius: 14px; position: relative; }
-        .footer-text { padding: 15px; text-align: center; color: var(--secondary); font-size: 9px; text-transform: uppercase; letter-spacing: 1px; border-top: 1px solid #111; }
+
+        .dashboard { display: none; padding: 20px; flex-direction: column; gap: 15px; overflow-y: auto; text-align: left; }
+        .card { background: #111; border: 1px solid #222; padding: 20px; border-radius: 15px; }
+        .user-ava { width: 70px; height: 70px; border-radius: 50%; border: 2px solid var(--gold); margin-bottom: 15px; overflow: hidden; }
+        
+        #status-msg { margin-top: 20px; color: var(--gold); min-height: 20px; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <div class="main-container" id="app-content">
+    <div class="container" id="app-content">
         <div id="home-view">
             <div class="logo">BSMLH</div>
             <div class="btn-group">
-                <button class="primary-btn" id="login-btn-main" onclick="secureLogin()">Войти (NFC)</button>
-                <button class="secondary-btn" onclick="startOnboarding()">Зарегистрироваться</button>
+                <button class="p-btn" onclick="secureLogin()">Войти (NFC)</button>
+                <button class="s-btn" onclick="startOnboarding()">Зарегистрироваться</button>
             </div>
-            <div id="status-msg" style="margin-top: 25px; color: var(--gold); font-size: 14px; font-weight: bold;"></div>
+            <div id="status-msg"></div>
         </div>
 
         <div id="dynamic-content"></div>
 
         <div id="cam-box">
-            <h2 style="margin-bottom: 20px;">Биометрия</h2>
+            <h2 style="margin-bottom:20px;">Биометрия</h2>
             <div class="v-wrap"><video id="video" autoplay playsinline></video></div>
-            <button class="primary-btn" onclick="capturePhoto()">Сделать фото</button>
+            <button class="p-btn" style="width:100%; max-width:320px;" onclick="capturePhoto()">Сделать фото</button>
         </div>
     </div>
 
     <div class="dashboard" id="main-dashboard">
-        <div class="user-hdr">
-            <div class="user-ava"><img id="res-photo" style="width:100%; height:100%; object-fit:cover;"></div>
-            <div>
-                <div style="font-size: 13px; color: var(--secondary);">Verified Identity</div>
-                <div id="user-huid-display" style="font-weight: bold; font-size: 18px; color: var(--gold);">HUID-XXXX</div>
-            </div>
+        <div class="user-ava"><img id="res-photo" style="width:100%; height:100%; object-fit:cover;"></div>
+        <h2 id="res-name-full" style="color:var(--gold); margin-bottom:5px;"></h2>
+        <p id="user-huid-display" style="color:var(--secondary); font-family:monospace; margin-bottom:20px;"></p>
+        
+        <div class="card">
+            <small style="color:var(--secondary);">СТАТУС</small>
+            <div style="font-size:18px; margin-top:5px;">Soulbound Verified 🛡️</div>
         </div>
-        <div class="card" onclick="document.getElementById('profile-info').style.display='block'">
-            <div style="color: var(--secondary); font-size: 10px; margin-bottom: 5px;">ПРОФИЛЬ</div>
-            <div style="font-size: 18px; font-weight: 500;" id="res-name-full">Загрузка...</div>
-            <div id="profile-info" style="display:none; margin-top:10px; border-top:1px solid #222; padding-top:10px; font-size:13px; color:var(--secondary);">
-                <div id="res-email"></div>
-                <div id="res-phone"></div>
-            </div>
+        
+        <div class="card">
+            <small style="color:var(--secondary);">QRT BALANCE</small>
+            <div style="font-size:24px; font-weight:bold; margin-top:5px;">1.00 QRT</div>
         </div>
-        <div class="card"><div style="color: var(--secondary); font-size: 10px; margin-bottom: 5px;">СТАТУС</div><div style="font-size: 18px;">Soulbound Verified 🛡️</div></div>
-        <div class="card"><div style="color: var(--secondary); font-size: 10px; margin-bottom: 5px;">QRT BALANCE</div><div style="font-size: 22px; font-weight: bold;">1.00 QRT</div></div>
-        <button class="secondary-btn" style="margin-top: 15px;" onclick="location.reload()">Выход</button>
-    </div>
 
-    <footer class="footer-text">Biometric Security Multi-function Ledger for Humanity</footer>
-    <canvas id="canvas" style="display:none;"></canvas>
+        <button class="s-btn" style="margin-top:20px;" onclick="location.reload()">Выйти</button>
+    </div>
 
     <script>
         let photoBase64 = "";
-        let userForm = { name: "", surname: "", email: "", phone: "" };
-        let currentStep = 0;
+        let userForm = {};
         let videoStream = null;
 
+        // 1. Старт регистрации (слайды убрал для скорости, сразу форма)
         function startOnboarding() {
             document.getElementById('home-view').style.display = 'none';
-            renderSlide();
+            const dc = document.getElementById('dynamic-content');
+            dc.innerHTML = `
+                <h2 style="margin-bottom:20px;">Регистрация</h2>
+                <input type="text" id="f-name" class="input-field" placeholder="Имя">
+                <input type="text" id="f-surname" class="input-field" placeholder="Фамилия">
+                <input type="email" id="f-email" class="input-field" placeholder="Email">
+                <input type="tel" id="f-phone" class="input-field" placeholder="Телефон">
+                <button class="p-btn" style="width:100%;" onclick="goToCam()">Далее</button>
+            `;
         }
 
-        function renderSlide() {
-            const container = document.getElementById('dynamic-content');
-            if (currentStep < 2) {
-                const slides = [{t:"HUID", d:"Ваша цифровая личность."}, {t:"CHIP", d:"Кольцо — ваш ключ."}];
-                container.innerHTML = <h2>${slides[currentStep].t}</h2><p style="color:var(--secondary);margin:20px 0 40px;">${slides[currentStep].d}</p><button class="primary-btn" onclick="currentStep++; renderSlide()">Далее</button>;
-            } else { renderForm(); }
-        }
+        // 2. Переход к камере
+        async function goToCam() {
+            userForm = {
+                name: document.getElementById('f-name').value,
+                surname: document.getElementById('f-surname').value,
+                email: document.getElementById('f-email').value,
+                phone: document.getElementById('f-phone').value
+            };
+            if(!userForm.name || !userForm.surname) return alert("Введите Имя и Фамилию");
 
-        function renderForm() {
-            document.getElementById('dynamic-content').innerHTML = <h2>Регистрация</h2><input type="text" id="f-name" class="input-field" placeholder="Имя"><input type="text" id="f-surname" class="input-field" placeholder="Фамилия"><input type="email" id="f-email" class="input-field" placeholder="Email"><input type="tel" id="f-phone" class="input-field" placeholder="Телефон"><button class="primary-btn" onclick="saveFormAndCam()">К биометрии</button>;
-        }
-
-        function saveFormAndCam() {
-            userForm = { name: document.getElementById('f-name').value, surname: document.getElementById('f-surname').value, email: document.getElementById('f-email').value, phone: document.getElementById('f-phone').value };
-            if(!userForm.name) return alert("Введите имя");
             document.getElementById('dynamic-content').style.display = 'none';
             document.getElementById('cam-box').style.display = 'block';
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } }).then(s => { videoStream = s; document.getElementById('video').srcObject = s; });
-        }
 
-        function capturePhoto() {
-            const c = document.getElementById('canvas');
-            c.width = 160; c.height = 160;
-            c.getContext('2d').drawImage(document.getElementById('video'), 0, 0, 160, 160);
-            photoBase64 = c.toDataURL('image/jpeg', 0.3);
-            if (videoStream) videoStream.getTracks().forEach(t => t.stop());
-            document.getElementById('cam-box').innerHTML = "<h2 style='color:var(--gold)'>Приложите кольцо...</h2>";
-            setTimeout(initNFCBinding, 800);
-        }
-
-        async function initNFCBinding() {
-            const huid = "HUID-2026-" + Math.random().toString(16).slice(2, 8).toUpperCase();
-            if ('NDEFReader' in window) {
-                try {
-                    const ndef = new NDEFReader(); await ndef.scan();
-                    ndef.onreading = event => {
-                        localStorage.setItem('bs_uid', event.serialNumber);
-                        localStorage.setItem('bs_huid', huid);
-                        localStorage.setItem('bs_photo', photoBase64);
-                        localStorage.setItem('bs_user', JSON.stringify(userForm));
-                        showDashboard(huid, photoBase64, userForm);
-                    };
-                } catch (e) { alert("Ошибка записи. Используйте Chrome/Android"); }
-            } else { // Эмуляция для ПК
-                localStorage.setItem('bs_uid', 'DEBUG-123');
-                localStorage.setItem('bs_huid', huid);
-                localStorage.setItem('bs_photo', photoBase64);
-                localStorage.setItem('bs_user', JSON.stringify(userForm));
-                showDashboard(huid, photoBase64, userForm);
+            try {
+                videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                document.getElementById('video').srcObject = videoStream;
+            } catch (e) {
+                alert("Ошибка камеры: проверьте разрешения");
             }
         }
 
+        // 3. Снимок и подготовка к NFC
+        function capturePhoto() {
+            const c = document.createElement('canvas');
+            const v = document.getElementById('video');
+            c.width = 160; c.height = 160;
+            c.getContext('2d').drawImage(v, 0, 0, 160, 160);
+            photoBase64 = c.toDataURL('image/jpeg', 0.4);
+
+            if (videoStream) videoStream.getTracks().forEach(t => t.stop());
+            document.getElementById('cam-box').innerHTML = "<h2 style='color:var(--gold)'>ПРИЛОЖИТЕ КОЛЬЦО</h2><p style='margin-top:15px; color:#888;'>Идет привязка к чипу...</p>";
+            
+            setTimeout(initNFCRegister, 800);
+        }
+
+        // 4. Регистрация NFC
+        async function initNFCRegister() {
+            const huid = "HUID-" + Math.random().toString(16).slice(2, 8).toUpperCase();
+            if ('NDEFReader' in window) {
+                try {
+                    const ndef = new NDEFReader();
+                    await ndef.scan();
+                    ndef.onreading = event => {
+                        saveAndShow(event.serialNumber, huid);
+                    };
+                } catch (e) {
+                    alert("Ошибка NFC. Попробуйте обновить страницу.");
+                }
+            } else {
+                // Эмуляция для теста
+                setTimeout(() => saveAndShow("DEBUG-ID", huid), 1500);
+            }
+        }
+
+        function saveAndShow(uid, huid) {
+            localStorage.setItem('bs_uid', uid);
+            localStorage.setItem('bs_huid', huid);
+            localStorage.setItem('bs_photo', photoBase64);
+            localStorage.setItem('bs_user', JSON.stringify(userForm));
+            showDashboard(huid, photoBase64, userForm);
+        }
+
+        // 5. Вход по NFC
         async function secureLogin() {
             const savedUID = localStorage.getItem('bs_uid');
-            if (!savedUID) return alert("Нет данных. Зарегистрируйтесь!");
-            
+            if (!savedUID) return alert("Вы не зарегистрированы!");
+
             const msg = document.getElementById('status-msg');
             msg.innerText = "ОЖИДАНИЕ КОЛЬЦА...";
 
             if ('NDEFReader' in window) {
                 try {
-                    const ndef = new NDEFReader(); 
+                    const ndef = new NDEFReader();
                     await ndef.scan();
                     ndef.onreading = event => {
-                        // ТУТ СТРОГАЯ ПРОВЕРКА
                         if (event.serialNumber === savedUID) {
-                            loadAccount();
+                            loadData();
                         } else {
-                            msg.innerText = "ОШИБКА: КОЛЬЦО НЕВЕРНОЕ";
+                            msg.innerText = "ОШИБКА: НЕ ТО КОЛЬЦО";
                         }
                     };
-                } catch (e) { fallbackAuth(); }
-            } else { fallbackAuth(); }
+                } catch (e) {
+                    fallbackLogin();
+                }
+            } else {
+                fallbackLogin();
+            }
         }
 
-        function fallbackAuth() {
-            if (prompt("Введите код доступа (1234):") === "1234") loadAccount();
+        function fallbackLogin() {
+            const code = prompt("Введите код (1234):");
+            if(code === "1234") loadData();
         }
 
-        function loadAccount() {
+        function loadData() {
             const h = localStorage.getItem('bs_huid');
             const p = localStorage.getItem('bs_photo');
             const u = JSON.parse(localStorage.getItem('bs_user'));
@@ -172,8 +194,6 @@
             document.getElementById('user-huid-display').innerText = huid;
             document.getElementById('res-photo').src = photo;
             document.getElementById('res-name-full').innerText = user.name + " " + user.surname;
-            document.getElementById('res-email').innerText = "Email: " + user.email;
-            document.getElementById('res-phone').innerText = "Тел: " + user.phone;
         }
     </script>
 </body>
