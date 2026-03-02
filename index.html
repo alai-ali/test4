@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BSMLH System</title>
+    <title>BSMLH — Secure HUID</title>
     <style>
         :root { --bg: #000; --text: #fff; --gold: #f6851b; --secondary: #8e8e93; }
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -13,12 +13,12 @@
         .logo { font-size: 32px; letter-spacing: 8px; margin-bottom: 50px; font-weight: 500; }
         
         .btn-group { width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 15px; }
-        .p-btn { background: #fff; color: #000; border: none; padding: 18px; border-radius: 8px; font-weight: 600; font-size: 16px; cursor: pointer; }
-        .s-btn { background: transparent; color: #fff; border: 1px solid #333; padding: 18px; border-radius: 8px; font-size: 16px; cursor: pointer; }
+        .p-btn { background: #fff; color: #000; border: none; padding: 18px; border-radius: 8px; font-weight: 600; font-size: 16px; cursor: pointer; width: 100%; }
+        .s-btn { background: transparent; color: #fff; border: 1px solid #333; padding: 18px; border-radius: 8px; font-size: 16px; cursor: pointer; width: 100%; }
         
         .input-field { width: 100%; max-width: 320px; background: #111; border: 1px solid #333; padding: 15px; border-radius: 8px; color: #fff; margin-bottom: 12px; font-size: 16px; outline: none; }
         
-        #cam-box { display: none; width: 100%; }
+        #cam-box, #nfc-trigger-box { display: none; width: 100%; flex-direction: column; align-items: center; }
         .v-wrap { width: 200px; height: 260px; margin: 0 auto 20px; border-radius: 100px / 130px; overflow: hidden; border: 2px solid var(--gold); background: #050505; }
         #video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
 
@@ -26,7 +26,7 @@
         .card { background: #111; border: 1px solid #222; padding: 20px; border-radius: 15px; }
         .user-ava { width: 70px; height: 70px; border-radius: 50%; border: 2px solid var(--gold); margin-bottom: 15px; overflow: hidden; }
         
-        #status-msg { margin-top: 20px; color: var(--gold); min-height: 20px; font-weight: bold; }
+        #status-msg { margin-top: 20px; color: var(--gold); font-weight: bold; min-height: 20px; }
     </style>
 </head>
 <body>
@@ -46,7 +46,13 @@
         <div id="cam-box">
             <h2 style="margin-bottom:20px;">Биометрия</h2>
             <div class="v-wrap"><video id="video" autoplay playsinline></video></div>
-            <button class="p-btn" style="width:100%; max-width:320px;" onclick="capturePhoto()">Сделать фото</button>
+            <button class="p-btn" style="max-width:320px;" onclick="capturePhoto()">Сделать фото</button>
+        </div>
+
+        <div id="nfc-trigger-box">
+            <h2 style="color:var(--gold); margin-bottom:10px;">ФОТО ГОТОВО</h2>
+            <p style="color:var(--secondary); margin-bottom:30px;">Теперь нужно привязать ваше кольцо.<br>Нажмите кнопку и поднесите кольцо к верхней части телефона.</p>
+            <button class="p-btn" style="max-width:320px;" onclick="initNFCRegister()">ПРИВЯЗАТЬ КОЛЬЦО</button>
         </div>
     </div>
 
@@ -68,26 +74,25 @@
         <button class="s-btn" style="margin-top:20px;" onclick="location.reload()">Выйти</button>
     </div>
 
+    <canvas id="canvas" style="display:none;"></canvas>
+
     <script>
         let photoBase64 = "";
         let userForm = {};
         let videoStream = null;
 
-        // 1. Старт регистрации (слайды убрал для скорости, сразу форма)
         function startOnboarding() {
             document.getElementById('home-view').style.display = 'none';
-            const dc = document.getElementById('dynamic-content');
-            dc.innerHTML = `
+            document.getElementById('dynamic-content').innerHTML = `
                 <h2 style="margin-bottom:20px;">Регистрация</h2>
                 <input type="text" id="f-name" class="input-field" placeholder="Имя">
                 <input type="text" id="f-surname" class="input-field" placeholder="Фамилия">
                 <input type="email" id="f-email" class="input-field" placeholder="Email">
                 <input type="tel" id="f-phone" class="input-field" placeholder="Телефон">
-                <button class="p-btn" style="width:100%;" onclick="goToCam()">Далее</button>
+                <button class="p-btn" onclick="goToCam()">Далее</button>
             `;
         }
 
-        // 2. Переход к камере
         async function goToCam() {
             userForm = {
                 name: document.getElementById('f-name').value,
@@ -98,58 +103,48 @@
             if(!userForm.name || !userForm.surname) return alert("Введите Имя и Фамилию");
 
             document.getElementById('dynamic-content').style.display = 'none';
-            document.getElementById('cam-box').style.display = 'block';
+            document.getElementById('cam-box').style.display = 'flex';
 
             try {
                 videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
                 document.getElementById('video').srcObject = videoStream;
-            } catch (e) {
-                alert("Ошибка камеры: проверьте разрешения");
-            }
+            } catch (e) { alert("Камера недоступна"); }
         }
 
-        // 3. Снимок и подготовка к NFC
         function capturePhoto() {
-            const c = document.createElement('canvas');
+            const c = document.getElementById('canvas');
             const v = document.getElementById('video');
             c.width = 160; c.height = 160;
             c.getContext('2d').drawImage(v, 0, 0, 160, 160);
             photoBase64 = c.toDataURL('image/jpeg', 0.4);
 
             if (videoStream) videoStream.getTracks().forEach(t => t.stop());
-            document.getElementById('cam-box').innerHTML = "<h2 style='color:var(--gold)'>ПРИЛОЖИТЕ КОЛЬЦО</h2><p style='margin-top:15px; color:#888;'>Идет привязка к чипу...</p>";
             
-            setTimeout(initNFCRegister, 800);
+            // ПЕРЕХОД К ЭКРАНУ АКТИВАЦИИ NFC
+            document.getElementById('cam-box').style.display = 'none';
+            document.getElementById('nfc-trigger-box').style.display = 'flex';
         }
 
-        // 4. Регистрация NFC
         async function initNFCRegister() {
             const huid = "HUID-" + Math.random().toString(16).slice(2, 8).toUpperCase();
+            
             if ('NDEFReader' in window) {
                 try {
                     const ndef = new NDEFReader();
-                    await ndef.scan();
+                    await ndef.scan(); // iPhone покажет системное окно здесь
+                    
                     ndef.onreading = event => {
                         saveAndShow(event.serialNumber, huid);
                     };
                 } catch (e) {
-                    alert("Ошибка NFC. Попробуйте обновить страницу.");
+                    alert("NFC Error: Приложите кольцо сразу после нажатия.");
                 }
             } else {
-                // Эмуляция для теста
-                setTimeout(() => saveAndShow("DEBUG-ID", huid), 1500);
+                // Эмуляция для ПК
+                saveAndShow("DEBUG-12345", huid);
             }
         }
 
-        function saveAndShow(uid, huid) {
-            localStorage.setItem('bs_uid', uid);
-            localStorage.setItem('bs_huid', huid);
-            localStorage.setItem('bs_photo', photoBase64);
-            localStorage.setItem('bs_user', JSON.stringify(userForm));
-            showDashboard(huid, photoBase64, userForm);
-        }
-
-        // 5. Вход по NFC
         async function secureLogin() {
             const savedUID = localStorage.getItem('bs_uid');
             if (!savedUID) return alert("Вы не зарегистрированы!");
@@ -160,28 +155,27 @@
             if ('NDEFReader' in window) {
                 try {
                     const ndef = new NDEFReader();
-                    await ndef.scan();
+                    await ndef.scan(); 
                     ndef.onreading = event => {
                         if (event.serialNumber === savedUID) {
-                            loadData();
+                            loadAccount();
                         } else {
-                            msg.innerText = "ОШИБКА: НЕ ТО КОЛЬЦО";
+                            msg.innerText = "НЕВЕРНОЕ КОЛЬЦО";
                         }
                     };
-                } catch (e) {
-                    fallbackLogin();
-                }
-            } else {
-                fallbackLogin();
-            }
+                } catch (e) { fallbackAuth(); }
+            } else { fallbackAuth(); }
         }
 
-        function fallbackLogin() {
-            const code = prompt("Введите код (1234):");
-            if(code === "1234") loadData();
+        function saveAndShow(uid, huid) {
+            localStorage.setItem('bs_uid', uid);
+            localStorage.setItem('bs_huid', huid);
+            localStorage.setItem('bs_photo', photoBase64);
+            localStorage.setItem('bs_user', JSON.stringify(userForm));
+            showDashboard(huid, photoBase64, userForm);
         }
 
-        function loadData() {
+        function loadAccount() {
             const h = localStorage.getItem('bs_huid');
             const p = localStorage.getItem('bs_photo');
             const u = JSON.parse(localStorage.getItem('bs_user'));
@@ -191,9 +185,13 @@
         function showDashboard(huid, photo, user) {
             document.getElementById('app-content').style.display = 'none';
             document.getElementById('main-dashboard').style.display = 'flex';
-            document.getElementById('user-huid-display').innerText = huid;
             document.getElementById('res-photo').src = photo;
             document.getElementById('res-name-full').innerText = user.name + " " + user.surname;
+            document.getElementById('user-huid-display').innerText = huid;
+        }
+
+        function fallbackAuth() {
+            if(prompt("Код доступа (1234):") === "1234") loadAccount();
         }
     </script>
 </body>
