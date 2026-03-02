@@ -3,30 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BSMLH — Secure HUID</title>
+    <title>BSMLH Core System</title>
     <style>
         :root { --bg: #000; --text: #fff; --gold: #f6851b; --secondary: #8e8e93; }
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-        
         .container { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; text-align: center; }
         .logo { font-size: 32px; letter-spacing: 8px; margin-bottom: 50px; font-weight: 500; }
-        
         .btn-group { width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 15px; }
-        .p-btn { background: #fff; color: #000; border: none; padding: 18px; border-radius: 8px; font-weight: 600; font-size: 16px; cursor: pointer; width: 100%; }
-        .s-btn { background: transparent; color: #fff; border: 1px solid #333; padding: 18px; border-radius: 8px; font-size: 16px; cursor: pointer; width: 100%; }
-        
+        .p-btn { background: #fff; color: #000; border: none; padding: 18px; border-radius: 8px; font-weight: 600; font-size: 16px; cursor: pointer; }
+        .s-btn { background: transparent; color: #fff; border: 1px solid #333; padding: 18px; border-radius: 8px; font-size: 16px; cursor: pointer; }
         .input-field { width: 100%; max-width: 320px; background: #111; border: 1px solid #333; padding: 15px; border-radius: 8px; color: #fff; margin-bottom: 12px; font-size: 16px; outline: none; }
-        
         #cam-box, #nfc-trigger-box { display: none; width: 100%; flex-direction: column; align-items: center; }
         .v-wrap { width: 200px; height: 260px; margin: 0 auto 20px; border-radius: 100px / 130px; overflow: hidden; border: 2px solid var(--gold); background: #050505; }
         #video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
-
         .dashboard { display: none; padding: 20px; flex-direction: column; gap: 15px; overflow-y: auto; text-align: left; }
         .card { background: #111; border: 1px solid #222; padding: 20px; border-radius: 15px; }
         .user-ava { width: 70px; height: 70px; border-radius: 50%; border: 2px solid var(--gold); margin-bottom: 15px; overflow: hidden; }
-        
-        #status-msg { margin-top: 20px; color: var(--gold); font-weight: bold; min-height: 20px; }
+        #status-msg { margin-top: 20px; color: var(--gold); font-weight: bold; }
     </style>
 </head>
 <body>
@@ -44,15 +38,15 @@
         <div id="dynamic-content"></div>
 
         <div id="cam-box">
-            <h2 style="margin-bottom:20px;">Биометрия</h2>
+            <h2>Биометрия</h2>
             <div class="v-wrap"><video id="video" autoplay playsinline></video></div>
-            <button class="p-btn" style="max-width:320px;" onclick="capturePhoto()">Сделать фото</button>
+            <button class="p-btn" style="width:100%; max-width:320px;" onclick="capturePhoto()">Сделать фото</button>
         </div>
 
         <div id="nfc-trigger-box">
-            <h2 style="color:var(--gold); margin-bottom:10px;">ФОТО ГОТОВО</h2>
-            <p style="color:var(--secondary); margin-bottom:30px;">Теперь нужно привязать ваше кольцо.<br>Нажмите кнопку и поднесите кольцо к верхней части телефона.</p>
-            <button class="p-btn" style="max-width:320px;" onclick="initNFCRegister()">ПРИВЯЗАТЬ КОЛЬЦО</button>
+            <h2 id="nfc-title" style="color:var(--gold); margin-bottom:10px;">ФОТО СОХРАНЕНО</h2>
+            <p id="nfc-desc" style="color:var(--secondary); margin-bottom:30px; padding:0 10px;">Для завершения приложите кольцо к верхней части iPhone после нажатия кнопки.</p>
+            <button class="p-btn" style="max-width:320px;" onclick="runRealNFC()">ПРИВЯЗАТЬ КОЛЬЦО</button>
         </div>
     </div>
 
@@ -60,17 +54,14 @@
         <div class="user-ava"><img id="res-photo" style="width:100%; height:100%; object-fit:cover;"></div>
         <h2 id="res-name-full" style="color:var(--gold); margin-bottom:5px;"></h2>
         <p id="user-huid-display" style="color:var(--secondary); font-family:monospace; margin-bottom:20px;"></p>
-        
         <div class="card">
             <small style="color:var(--secondary);">СТАТУС</small>
             <div style="font-size:18px; margin-top:5px;">Soulbound Verified 🛡️</div>
         </div>
-        
         <div class="card">
             <small style="color:var(--secondary);">QRT BALANCE</small>
             <div style="font-size:24px; font-weight:bold; margin-top:5px;">1.00 QRT</div>
         </div>
-
         <button class="s-btn" style="margin-top:20px;" onclick="location.reload()">Выйти</button>
     </div>
 
@@ -89,7 +80,7 @@
                 <input type="text" id="f-surname" class="input-field" placeholder="Фамилия">
                 <input type="email" id="f-email" class="input-field" placeholder="Email">
                 <input type="tel" id="f-phone" class="input-field" placeholder="Телефон">
-                <button class="p-btn" onclick="goToCam()">Далее</button>
+                <button class="p-btn" style="width:100%;" onclick="goToCam()">Далее</button>
             `;
         }
 
@@ -100,54 +91,56 @@
                 email: document.getElementById('f-email').value,
                 phone: document.getElementById('f-phone').value
             };
-            if(!userForm.name || !userForm.surname) return alert("Введите Имя и Фамилию");
-
+            if(!userForm.name) return alert("Введите Имя");
             document.getElementById('dynamic-content').style.display = 'none';
             document.getElementById('cam-box').style.display = 'flex';
-
             try {
                 videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
                 document.getElementById('video').srcObject = videoStream;
-            } catch (e) { alert("Камера недоступна"); }
+            } catch (e) { alert("Камера недоступна. Проверьте HTTPS."); }
         }
 
         function capturePhoto() {
             const c = document.getElementById('canvas');
-            const v = document.getElementById('video');
             c.width = 160; c.height = 160;
-            c.getContext('2d').drawImage(v, 0, 0, 160, 160);
+            c.getContext('2d').drawImage(document.getElementById('video'), 0, 0, 160, 160);
             photoBase64 = c.toDataURL('image/jpeg', 0.4);
-
             if (videoStream) videoStream.getTracks().forEach(t => t.stop());
-            
-            // ПЕРЕХОД К ЭКРАНУ АКТИВАЦИИ NFC
             document.getElementById('cam-box').style.display = 'none';
             document.getElementById('nfc-trigger-box').style.display = 'flex';
         }
 
-        async function initNFCRegister() {
+        async function runRealNFC() {
+            if (!('NDEFReader' in window)) {
+                return alert("NFC не поддерживается на этом устройстве/браузере.");
+            }
+
             const huid = "HUID-" + Math.random().toString(16).slice(2, 8).toUpperCase();
-            
-            if ('NDEFReader' in window) {
-                try {
-                    const ndef = new NDEFReader();
-                    await ndef.scan(); // iPhone покажет системное окно здесь
-                    
-                    ndef.onreading = event => {
-                        saveAndShow(event.serialNumber, huid);
-                    };
-                } catch (e) {
-                    alert("NFC Error: Приложите кольцо сразу после нажатия.");
-                }
-            } else {
-                // Эмуляция для ПК
-                saveAndShow("DEBUG-12345", huid);
+            const nfcTitle = document.getElementById('nfc-title');
+            const nfcDesc = document.getElementById('nfc-desc');
+
+            try {
+                const ndef = new NDEFReader();
+                await ndef.scan(); // Появление системного окна iOS
+
+                nfcTitle.innerText = "ОЖИДАНИЕ...";
+                nfcDesc.innerText = "Система готова. Коснитесь кольцом верхней грани телефона.";
+
+                ndef.onreading = event => {
+                    // ФИЗИЧЕСКИЙ ВХОД ТОЛЬКО ЗДЕСЬ
+                    saveData(event.serialNumber || "TOKEN-" + huid, huid);
+                };
+
+                ndef.onreadingerror = () => { alert("Ошибка чтения чипа. Попробуйте еще раз."); };
+
+            } catch (e) {
+                alert("NFC активация отклонена. Нажмите кнопку еще раз.");
             }
         }
 
         async function secureLogin() {
             const savedUID = localStorage.getItem('bs_uid');
-            if (!savedUID) return alert("Вы не зарегистрированы!");
+            if (!savedUID) return alert("Нет данных. Сначала зарегистрируйтесь.");
 
             const msg = document.getElementById('status-msg');
             msg.innerText = "ОЖИДАНИЕ КОЛЬЦА...";
@@ -155,43 +148,45 @@
             if ('NDEFReader' in window) {
                 try {
                     const ndef = new NDEFReader();
-                    await ndef.scan(); 
+                    await ndef.scan();
                     ndef.onreading = event => {
-                        if (event.serialNumber === savedUID) {
+                        if (event.serialNumber === savedUID || savedUID.includes(event.serialNumber)) {
                             loadAccount();
                         } else {
-                            msg.innerText = "НЕВЕРНОЕ КОЛЬЦО";
+                            msg.innerText = "ОШИБКА: ЧУЖОЕ КОЛЬЦО";
                         }
                     };
                 } catch (e) { fallbackAuth(); }
             } else { fallbackAuth(); }
         }
 
-        function saveAndShow(uid, huid) {
+        function saveData(uid, huid) {
             localStorage.setItem('bs_uid', uid);
             localStorage.setItem('bs_huid', huid);
             localStorage.setItem('bs_photo', photoBase64);
             localStorage.setItem('bs_user', JSON.stringify(userForm));
-            showDashboard(huid, photoBase64, userForm);
+            location.reload(); // Перезагружаем для чистоты входа
         }
 
         function loadAccount() {
             const h = localStorage.getItem('bs_huid');
             const p = localStorage.getItem('bs_photo');
             const u = JSON.parse(localStorage.getItem('bs_user'));
-            showDashboard(h, p, u);
-        }
-
-        function showDashboard(huid, photo, user) {
             document.getElementById('app-content').style.display = 'none';
             document.getElementById('main-dashboard').style.display = 'flex';
-            document.getElementById('res-photo').src = photo;
-            document.getElementById('res-name-full').innerText = user.name + " " + user.surname;
-            document.getElementById('user-huid-display').innerText = huid;
+            document.getElementById('res-photo').src = p;
+            document.getElementById('res-name-full').innerText = u.name + " " + u.surname;
+            document.getElementById('user-huid-display').innerText = h;
         }
 
+        window.onload = () => {
+            if(localStorage.getItem('bs_uid') && !document.getElementById('main-dashboard').style.display) {
+                // Если регистрация была, но мы на главном - ждем логина
+            }
+        };
+
         function fallbackAuth() {
-            if(prompt("Код доступа (1234):") === "1234") loadAccount();
+            if(prompt("Код (1234):") === "1234") loadAccount();
         }
     </script>
 </body>
